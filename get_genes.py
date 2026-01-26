@@ -99,8 +99,8 @@ def extract_gene(genome_fasta_gz, row):
     assert end > start
 
     # Expand region
-    start = max(1, start - 200)
-    end = end + 200
+    start = max(1, start - 1000)
+    end = end + 1000
 
     gene_name = extract_gene_name(attributes)
 
