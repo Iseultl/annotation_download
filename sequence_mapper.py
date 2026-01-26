@@ -90,7 +90,7 @@ def sequence_mapper(target_sequence, assembly_accession):
 def run_mapper(tsv_file, output_file):
     with open(tsv_file) as fin, open(output_file, "w", newline="") as fout:
         reader = csv.DictReader(fin, delimiter="\t")
-        writer = csv.DictWriter(fout, fieldnames=reader.fieldnames + ["Mapped_seqid"], delimiter="\t")
+        writer = csv.DictWriter(fout, fieldnames=reader.fieldnames + ["Mapped_seqid"] + ['sequence_name'], delimiter="\t")
         writer.writeheader()
 
         for row in reader:
@@ -98,23 +98,18 @@ def run_mapper(tsv_file, output_file):
             if not row["seqid"].strip():
                 continue
 
-            # Ensembl rows already have correct seqid
-            if row["Database"] != "RefSeq":
-                row["Mapped_seqid"] = row["seqid"]
-                writer.writerow(row)
-                continue
-
             mappings = sequence_mapper(
                 target_sequence=row["seqid"],
                 assembly_accession=row["Assembly_accession"]
             )
-
             if not mappings:
                 row["Mapped_seqid"] = "NOT_FOUND"
+                row["sequence_name"] = ""
             else:
                 # Prefer RefSeq accession, fallback to GenBank
                 best = mappings[0]
                 row["Mapped_seqid"] = best["refseq"] or best["genbank"] 
+                row["sequence_name"] = best["sequence_name"]
 
             writer.writerow(row)
             
@@ -128,6 +123,6 @@ if __name__ == "__main__":
     
 # Code for running the script 
 """
-python annotation_download/sequence_mapper.py --input data/Enhydra_test.tsv --output data/Enhydra_test_mapped.tsv
+python annotation_download/sequence_mapper.py --input data/SEPHS2_locations.tsv --output data/SEPHS2_locations_mapped.tsv
 """
 

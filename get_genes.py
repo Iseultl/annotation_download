@@ -105,8 +105,11 @@ def extract_gene(genome_fasta_gz, row):
 
     # Load genome
     with gzip.open(genome_fasta_gz, "rt") as handle:
-        genome = SeqIO.to_dict(SeqIO.parse(handle, "fasta"))
-
+        genome = SeqIO.to_dict(
+            SeqIO.parse(handle, "fasta"),
+            key_function=lambda rec: rec.id.split()[0]
+        )
+    # Find chromosome
     if seqid not in genome:
         print(f"[WARN] {seqid} not found in genome: {genome_fasta_gz}")
         return
