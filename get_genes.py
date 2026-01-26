@@ -87,6 +87,7 @@ def gene_output_path(row):
 def extract_gene(genome_fasta_gz, row):
     species = row["Species_dir"].strip()
     seqid = row["Mapped_seqid"].strip()
+    genbank_id = row["Fallback_seqid"].strip()
     start = int(row["start"])
     end = int(row["end"])
     strand = row["strand"].strip()
@@ -109,11 +110,13 @@ def extract_gene(genome_fasta_gz, row):
             SeqIO.parse(handle, "fasta"),
             key_function=lambda rec: rec.id.split()[0]
         )
-        print(f"[DEBUG] Genome keys: {list(genome.keys())[:10]}")
     # Find chromosome
     if seqid not in genome:
-        print(f"[WARN] {seqid} not found in genome: {genome_fasta_gz}")
-        return
+        if genbank_id and genbank_id in genome:
+            seqid = genbank_id
+        else:
+            print(f"[WARN] {seqid} not found in genome: {genome_fasta_gz}")
+            return
 
     seq = genome[seqid].seq[start - 1:end]
 

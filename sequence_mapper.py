@@ -78,7 +78,7 @@ def sequence_mapper(target_sequence, assembly_accession):
             *_
         ) = fields
 
-        if (sequence_name == target_sequence) or (assigned_molecule == target_sequence) or (genbank_acc == target_sequence):
+        if (sequence_name == target_sequence) or (assigned_molecule == target_sequence) or (genbank_acc == target_sequence) or (refseq_acc == target_sequence):
             matches.append({
                 "sequence_name": sequence_name,
                 "genbank": None if genbank_acc == "na" else genbank_acc,
@@ -90,7 +90,7 @@ def sequence_mapper(target_sequence, assembly_accession):
 def run_mapper(tsv_file, output_file):
     with open(tsv_file) as fin, open(output_file, "w", newline="") as fout:
         reader = csv.DictReader(fin, delimiter="\t")
-        writer = csv.DictWriter(fout, fieldnames=reader.fieldnames + ["Mapped_seqid"] + ['sequence_name'], delimiter="\t")
+        writer = csv.DictWriter(fout, fieldnames=reader.fieldnames + ["Mapped_seqid"] + ['Fallback_seqid'], delimiter="\t")
         writer.writeheader()
 
         for row in reader:
@@ -104,12 +104,12 @@ def run_mapper(tsv_file, output_file):
             )
             if not mappings:
                 row["Mapped_seqid"] = "NOT_FOUND"
-                row["sequence_name"] = ""
+                row["Fallback_seqid"] = ""
             else:
                 # Prefer RefSeq accession, fallback to GenBank
                 best = mappings[0]
-                row["Mapped_seqid"] = best["refseq"] or best["genbank"] 
-                row["sequence_name"] = best["sequence_name"]
+                row["Mapped_seqid"] = best["refseq"]
+                row["Fallback_seqid"] = best["genbank"] 
 
             writer.writerow(row)
             
