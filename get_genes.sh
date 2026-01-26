@@ -2,7 +2,7 @@
 #SBATCH --job-name=gff_async
 #SBATCH --output=/no_backup/rg/ileahy/logs/gff_%A_%a.out
 #SBATCH --error=/no_backup/rg/ileahy/logs/gff_%A_%a.err
-#SBATCH --time=01:00:00
+#SBATCH --time=00:10:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
 #SBATCH --array=0-11
