@@ -4,8 +4,8 @@
 #SBATCH --error=/no_backup/rg/ileahy/logs/download_genes_%A_%a.err
 #SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=4G
-#SBATCH --array=0-11
+#SBATCH --mem=8G
+#SBATCH --array=0,2,3,4,6,7,9,10,11
 #SBATCH --nice=10000
 
 set -euo pipefail

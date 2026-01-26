@@ -59,6 +59,28 @@ def extract_gene_name(attributes):
             return field.replace("Name=", "")
     return "UNKNOWN"
 
+def gene_output_path(row):
+    species = row["Species_dir"].strip()
+    seqid = row["Mapped_seqid"].strip()
+
+    if seqid == "NOT_FOUND":
+        seqid = row["seqid"].strip()
+
+    start = int(row["start"])
+    end = int(row["end"])
+    attributes = row.get("attributes", "")
+
+    start = max(1, start - 200)
+    end = end + 200
+
+    gene_name = extract_gene_name(attributes)
+
+    species_dir = os.path.join(GENE_DIR, species)
+
+    return os.path.join(
+        species_dir,
+        f"{gene_name}_{seqid}_{start}_{end}.fa"
+    )
 # --------------------------------------------------
 # Core logic
 # --------------------------------------------------
@@ -118,6 +140,11 @@ def process_tsv(tsv_file, start=None, end=None):
                 continue
             if end is not None and i >= end:
                 break
+            
+            output_path = gene_output_path(row)
+            if os.path.exists(output_path):
+                print(f"[SKIP] {output_path} already exists")
+                continue
             
             assembly = row["Assembly_accession"].strip()
 
