@@ -4,27 +4,42 @@ import os
 import csv
 import gzip
 import requests
+import time
 from Bio import SeqIO
 from Bio.Seq import Seq
 import argparse
 
-ANNOTRIEVE_API = "https://genome.crg.es/annotrieve/api/v0"
-GENOME_DIR = "genomes"
-GENE_DIR = "genes"
-
-os.makedirs(GENOME_DIR, exist_ok=True)
-os.makedirs(GENE_DIR, exist_ok=True)
-
 # --------------------------------------------------
 # Download genome file
 # --------------------------------------------------
-def get_genome_fasta_url(assembly_accession):
+def get_genome_fasta_url(assembly_accession, retries=5, timeout=15):
     """Query Annotrieve for genome FASTA URL"""
     url = f"{ANNOTRIEVE_API}/assemblies/{assembly_accession}"
-    r = requests.get(url, headers={"Accept": "application/json"})
-    if r.status_code != 200:
-        raise RuntimeError(f"Annotrieve error for {assembly_accession}")
-    return r.json()["download_url"]
+    for attempt in range(1, retries + 1):
+        try:
+            r = requests.get(
+                url,
+                headers={"Accept": "application/json"},
+                timeout=timeout
+            )
+            r.raise_for_status()
+            
+            if r.status_code != 200:
+                raise RuntimeError(f"Annotrieve error for {assembly_accession}")
+            return r.json()["download_url"]
+
+        except requests.exceptions.RequestException as e:
+            if attempt == retries:
+                raise RuntimeError(
+                    f"Annotrieve failed for {assembly_accession} after {retries} attempts"
+                ) from e
+
+            wait = 2 ** attempt
+            print(
+                f"[WARN] Annotrieve timeout for {assembly_accession} "
+                f"(attempt {attempt}/{retries}), retrying in {wait}s"
+            )
+            time.sleep(wait)
 
 def download_file(url, outfile, retries=5, chunk_size=1024*1024):
     tmp = outfile + ".part"
@@ -154,8 +169,16 @@ if __name__ == "__main__":
     parser.add_argument("--tsv_file", help="TSV file with gene annotation information")
     parser.add_argument("--start", type=int, help="Start index")
     parser.add_argument("--end", type=int, help="End index")
+    parser.add_argument("--outdir", help="Output directory")
     
     args = parser.parse_args()
+    
+    ANNOTRIEVE_API = "https://genome.crg.es/annotrieve/api/v0"
+    GENOME_DIR = args.outdir + "/genomes"
+    GENE_DIR = args.outdir + "/genes"
+
+    os.makedirs(GENOME_DIR, exist_ok=True)
+    os.makedirs(GENE_DIR, exist_ok=True)
 
     process_tsv(args.tsv_file, args.start, args.end)
 
