@@ -8,6 +8,7 @@ import time
 from Bio import SeqIO
 from Bio.Seq import Seq
 import argparse
+import json
 
 # --------------------------------------------------
 # Download genome file
