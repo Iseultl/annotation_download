@@ -109,6 +109,7 @@ def extract_gene(genome_fasta_gz, row):
             SeqIO.parse(handle, "fasta"),
             key_function=lambda rec: rec.id.split()[0]
         )
+        print(f"[DEBUG] Genome keys: {list(genome.keys())[:10]}")
     # Find chromosome
     if seqid not in genome:
         print(f"[WARN] {seqid} not found in genome: {genome_fasta_gz}")
@@ -196,6 +197,6 @@ if __name__ == "__main__":
 
 # Command for running script 
 """
-python get_genes.py --tsv_file data/genes.tsv
+python get_genes.py --tsv_file data/genes.tsv --assembly_urls data/assembly_urls.json --outdir data --start 0 --end 10
 """
 
