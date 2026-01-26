@@ -2,7 +2,7 @@
 #SBATCH --job-name=download_genes
 #SBATCH --output=/no_backup/rg/ileahy/logs/download_genes_%A_%a.out
 #SBATCH --error=/no_backup/rg/ileahy/logs/download_genes_%A_%a.err
-#SBATCH --time=00:10:00
+#SBATCH --time=01:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
 #SBATCH --array=0-11%3
