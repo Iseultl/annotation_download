@@ -93,7 +93,7 @@ def extract_gene(genome_fasta_gz, row):
         genome = SeqIO.to_dict(SeqIO.parse(handle, "fasta"))
 
     if seqid not in genome:
-        print(f"[WARN] {seqid} not found in genome")
+        print(f"[WARN] {seqid} not found in genome: {genome_fasta_gz}")
         return
 
     seq = genome[seqid].seq[start - 1:end]
@@ -114,14 +114,18 @@ def extract_gene(genome_fasta_gz, row):
         out.write(str(seq) + "\n")
 
     print(f"[WRITE] {outfile}")
+    return outfile
 
-def process_tsv(tsv_file):
-    genome_cache = {}
-
+def process_tsv(tsv_file, start=None, end=None):
     with open(tsv_file) as f:
         reader = csv.DictReader(f, delimiter="\t")
 
-        for row in reader:
+        for i, row in enumerate(reader):
+            if start is not None and i < start:
+                continue
+            if end is not None and i >= end:
+                break
+            
             assembly = row["Assembly_accession"].strip()
 
             genome_gz = os.path.join(
@@ -129,14 +133,18 @@ def process_tsv(tsv_file):
                 f"{assembly}.genome.fa.gz"
             )
 
-            # Download genome once per assembly
-            if assembly not in genome_cache:
-                print(f"[ASSEMBLY] {assembly}")
+            print(f"[ASSEMBLY] {assembly}")
+            
+            try:
                 genome_url = get_genome_fasta_url(assembly)
                 download_file(genome_url, genome_gz)
-                genome_cache[assembly] = genome_gz
+                extract_gene(genome_gz, row)
 
-            extract_gene(genome_cache[assembly], row)
+            finally:
+                # ALWAYS clean up, even if extract_gene fails
+                if os.path.exists(genome_gz):
+                    os.remove(genome_gz)
+                    print(f"[CLEANUP] removed {genome_gz}")
 
 # --------------------------------------------------
 # Main
@@ -144,9 +152,12 @@ def process_tsv(tsv_file):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract genes from genomes")
     parser.add_argument("--tsv_file", help="TSV file with gene annotation information")
+    parser.add_argument("--start", type=int, help="Start index")
+    parser.add_argument("--end", type=int, help="End index")
+    
     args = parser.parse_args()
 
-    process_tsv(args.tsv_file)
+    process_tsv(args.tsv_file, args.start, args.end)
 
 # Command for running script 
 """
