@@ -7,13 +7,7 @@ from pathlib import Path
 import csv
 import re
 import zlib
-import re
-
-# =====================
-# Paths
-# =====================
-BASE_DIR = Path(args.base_dir)
-OUTPUT_FILE = Path(args.output_file)
+import argparse
 
 # =====================
 # Output columns
