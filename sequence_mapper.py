@@ -110,7 +110,7 @@ def run_mapper(tsv_file, output_file):
                 best = mappings[0]
                 row["Mapped_seqid"] = best["refseq"]
                 row["Fallback_seqid"] = best["genbank"] 
-
+                print(row['seqid'])
             writer.writerow(row)
             
 if __name__ == "__main__":

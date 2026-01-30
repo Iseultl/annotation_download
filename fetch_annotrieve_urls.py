@@ -9,7 +9,7 @@ ANNOTRIEVE_API = "https://genome.crg.es/annotrieve/api/v0"
 
 urls = {}
 
-with open("/Users/iseult/gitlab/annotations_download/data/SEPHS2_locations_mapped.tsv") as f:
+with open("/Users/iseult/gitlab/annotations_download/data/missing_SEPHS2_locations_mapped.tsv") as f:
     reader = csv.DictReader(f, delimiter="\t")
     for row in reader:
         asm = row["Assembly_accession"].strip()
@@ -25,5 +25,5 @@ with open("/Users/iseult/gitlab/annotations_download/data/SEPHS2_locations_mappe
         r.raise_for_status()
         urls[asm] = r.json()["download_url"]
 
-with open("/Users/iseult/gitlab/annotations_download/data/assembly_urls.json", "w") as out:
+with open("/Users/iseult/gitlab/annotations_download/data/missing_assembly_urls.json", "w") as out:
     json.dump(urls, out, indent=2)

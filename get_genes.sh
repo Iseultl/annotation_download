@@ -10,8 +10,8 @@
 
 set -euo pipefail
 
-TABLE="/no_backup/rg/ileahy/mammals/SEPHS2_locations_mapped.tsv"
-ASSEMBLY_URLS="/no_backup/rg/ileahy/mammals/assembly_urls.json"
+TABLE="/no_backup/rg/ileahy/mammals/missing_SEPHS2_locations_mapped.tsv"
+ASSEMBLY_URLS="/no_backup/rg/ileahy/mammals/missing_assembly_urls.json"
 GENOME_DIR="/no_backup/rg/ileahy/mammals"
 
 CHUNK_SIZE=20
