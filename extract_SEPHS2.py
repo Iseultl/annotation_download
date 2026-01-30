@@ -65,7 +65,7 @@ def parse_gff_for_gene(gff_file, gene_aliases=None):
                 if len(fields) < 9 or fields[2] != "gene":
                     continue
             
-                if ("=SEPHS2" in fields[8]) or ("=sephs2" in fields[8]) or ("=SPS2" in fields[8]):
+                if ("=SEPHS2" in fields[8]) or ("=Sephs2" in fields[8]) or ("=SPS2" in fields[8]):
                     print(f"Found SEPHS2 in {gff_file}")
                     return fields  
         return None  # not found
