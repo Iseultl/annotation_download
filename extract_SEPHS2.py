@@ -1,3 +1,7 @@
+# The purpose of this script is to read the input gff files and find the annotations for SEPHS2
+# The output is a tsv file with the following columns:
+# seqid, source, type, start, end, score, strand, phase, attributes, Annotation_ID, Assembly_accession, Database, Species_dir
+
 import gzip
 from pathlib import Path
 import csv
@@ -8,8 +12,8 @@ import re
 # =====================
 # Paths
 # =====================
-BASE_DIR = Path("/no_backup/rg/ileahy/mammals")
-OUTPUT_FILE = Path("/no_backup/rg/ileahy/mammals/SEPHS2_locations.tsv")
+BASE_DIR = Path(args.base_dir)
+OUTPUT_FILE = Path(args.output_file)
 
 # =====================
 # Output columns
@@ -76,49 +80,61 @@ def parse_gff_for_gene(gff_file, gene_aliases=None):
 # =====================
 # Iterate species directories
 # =====================
-rows_to_write = []
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Extract genes from genomes")
+    parser.add_argument("--input_dir", help="Directory with species subdirectories")
+    parser.add_argument("--output_file", help="Output file")
+    args = parser.parse_args()
 
-for species_dir in BASE_DIR.iterdir():
-    if not species_dir.is_dir():
-        continue
+    BASE_DIR = Path(args.input_dir)
+    rows_to_write = []
 
-    # Extract metadata from README.txt
-    readme_file = species_dir / "README.txt"
-    annotation_id = assembly_acc = database = ""
-    if readme_file.exists():
-        with open(readme_file) as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith("Annotation ID"):
-                    annotation_id = line.split(":", 1)[1].strip()
-                elif line.startswith("Assembly accession"):
-                    assembly_acc = line.split(":", 1)[1].strip()
-                elif line.startswith("Database"):
-                    database = line.split(":", 1)[1].strip()
+    for species_dir in BASE_DIR.iterdir():
+        if not species_dir.is_dir():
+            continue
 
-    # Search GFF files in directory
-    gff_files = list(species_dir.glob("*.gff*"))
-    sep_row = None
-    for gff_file in gff_files:
-        sep_row = parse_gff_for_gene(gff_file, "SEPHS2")
+        # Extract metadata from README.txt
+        readme_file = species_dir / "README.txt"
+        annotation_id = assembly_acc = database = ""
+        if readme_file.exists():
+            with open(readme_file) as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith("Annotation ID"):
+                        annotation_id = line.split(":", 1)[1].strip()
+                    elif line.startswith("Assembly accession"):
+                        assembly_acc = line.split(":", 1)[1].strip()
+                    elif line.startswith("Database"):
+                        database = line.split(":", 1)[1].strip()
+
+        # Search GFF files in directory
+        gff_files = list(species_dir.glob("*.gff*"))
+        sep_row = None
+        for gff_file in gff_files:
+            sep_row = parse_gff_for_gene(gff_file, "SEPHS2")
+            if sep_row:
+                break  # stop at first file with SEPHS2
+
         if sep_row:
-            break  # stop at first file with SEPHS2
-
-    if sep_row:
-        # Add metadata columns
-        sep_row.extend([annotation_id, assembly_acc, database, species_dir.name])
-        rows_to_write.append(sep_row)
-    else:
-        # No SEPHS2 found: create empty row with only final column
-        empty_row = [""] * 12 + [species_dir.name]
-        rows_to_write.append(empty_row)
+            # Add metadata columns
+            sep_row.extend([annotation_id, assembly_acc, database, species_dir.name])
+            rows_to_write.append(sep_row)
+        else:
+            # No SEPHS2 found: create empty row with only final column
+            empty_row = [""] * 12 + [species_dir.name]
+            rows_to_write.append(empty_row)
 
 # =====================
 # Write output
 # =====================
-with open(OUTPUT_FILE, "w", newline="") as out_f:
-    writer = csv.writer(out_f, delimiter="\t")
-    writer.writerow(OUTPUT_HEADER)
-    writer.writerows(rows_to_write)
+    with open(args.output_file, "w", newline="") as out_f:
+        writer = csv.writer(out_f, delimiter="\t")
+        writer.writerow(OUTPUT_HEADER)
+        writer.writerows(rows_to_write)
 
-print(f"Done! SEPHS2 locations written to {OUTPUT_FILE}")
+    print(f"Done! SEPHS2 locations written to {args.output_file}")
+
+# Code for running script 
+"""
+python extract_SEPHS2.py
+"""
