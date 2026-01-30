@@ -1,4 +1,6 @@
 # fetch_annotrieve_urls.py
+# The purpose of this script is to get the download URLs for assembly genomes
+# listed in the SEPHS2_locations_mapped.tsv file.
 import csv
 import requests
 import json
