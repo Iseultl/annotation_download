@@ -9,7 +9,7 @@ from pathlib import Path
 # =====================
 # Config
 # =====================
-BASE_DIR = Path("/no_backup/rg/ileahy/mammals")
+BASE_DIR = Path("/no_backup/rg/ileahy/fish")
 CONCURRENCY = 2          # safe for HPC
 TIMEOUT = aiohttp.ClientTimeout(total=3600)
 MAX_RETRIES = 5

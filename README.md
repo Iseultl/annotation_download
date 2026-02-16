@@ -5,4 +5,4 @@ Step 1: Download annotations with async_gff_downloader.py <- run via annotation_
 Step 2: Extract SEPHS2 gene annotations with extract_SEPHS2.py -> SEPHS2_locations.tsv
 Step 3: Ensure the chromosomes are in the correct format with sequence_mapper.py
 Step 4: Get genome online locations with fetch_annotrieve_urls.py -> assembly_urls.json
-Step 5: Download genomes and extract gene of interest with get_genes.py -> genome asssemblies are automatically removed after run
+Step 5: Download genomes and extract gene of interest with get_genes.py -> genome asssemblies are automatically removed after run - run with get_genes.sh script
