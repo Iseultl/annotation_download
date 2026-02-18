@@ -1,4 +1,4 @@
-Download mammalian SEPHS2 genes
+Update the script so that it can download all the genes given a gene name and taxonomic group.
 
 This repository contains scripts to download mammalian genomes with SEPHS2 genes.
 Step 1: Download annotations with async_gff_downloader.py <- run via annotation_download.sh

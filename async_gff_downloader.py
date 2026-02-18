@@ -4,12 +4,13 @@ import aiohttp
 import aiofiles
 import csv
 import os
+import random
 from pathlib import Path
+import ssl
 
 # =====================
 # Config
 # =====================
-BASE_DIR = Path("/no_backup/rg/ileahy/fish")
 CONCURRENCY = 2          # safe for HPC
 TIMEOUT = aiohttp.ClientTimeout(total=3600)
 MAX_RETRIES = 5
@@ -18,10 +19,10 @@ BASE_DELAY = 5
 # =====================
 # Async download logic
 # =====================
-async def download_file(session, semaphore, row):
+async def download_file(session, semaphore, row, base_dir: Path):
     async with semaphore:
         organism = row["organism_name"].replace(" ", "_")
-        species_dir = BASE_DIR / f"{row['taxid']}_{organism}"
+        species_dir = base_dir / f"{row['taxid']}_{organism}"
         species_dir.mkdir(parents=True, exist_ok=True)
 
         url = row["source_url"]
@@ -68,16 +69,23 @@ Source URL:
 # =====================
 # Main async driver
 # =====================
-async def main(tsv_file, start, end):
-    semaphore = asyncio.Semaphore(CONCURRENCY)
+async def main(tsv_file, start, end, outdir: str, concurrency: int = CONCURRENCY):
+    semaphore = asyncio.Semaphore(concurrency)
+    base_dir = Path(outdir)
 
     with open(tsv_file, newline="") as f:
         reader = list(csv.DictReader(f, delimiter="\t"))
         rows = reader[start:end]
 
-    async with aiohttp.ClientSession(timeout=TIMEOUT) as session:
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    
+    connector = aiohttp.TCPConnector(ssl=ssl_context)
+    
+    async with aiohttp.ClientSession(timeout=TIMEOUT, connector=connector) as session:
         tasks = [
-            download_file(session, semaphore, row)
+            download_file(session, semaphore, row, base_dir)
             for row in rows
         ]
         await asyncio.gather(*tasks)
@@ -88,8 +96,26 @@ async def main(tsv_file, start, end):
 if __name__ == "__main__":
     import sys
 
-    tsv = sys.argv[1]
-    start = int(sys.argv[2])
-    end = int(sys.argv[3])
+    if len(sys.argv) == 4:
+        tsv = sys.argv[1]
+        start = int(sys.argv[2])
+        end = int(sys.argv[3])
+        outdir = "."
+    else:
+        import argparse
 
-    asyncio.run(main(tsv, start, end))
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--tsv", required=True)
+        parser.add_argument("--start", type=int, default=0)
+        parser.add_argument("--end", type=int, required=True)
+        parser.add_argument("--outdir", required=True)
+        parser.add_argument("--concurrency", type=int, default=CONCURRENCY)
+        args = parser.parse_args()
+
+        tsv = args.tsv
+        start = args.start
+        end = args.end
+        outdir = args.outdir
+        concurrency = args.concurrency
+
+    asyncio.run(main(tsv, start, end, outdir, concurrency=locals().get("concurrency", CONCURRENCY)))
