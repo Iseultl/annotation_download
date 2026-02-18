@@ -34,13 +34,13 @@ for i in ${dirs}; do
     fi
     rm -f "${output_dir}/${i}/"*.aliasMappings.tsv 2>/dev/null || true
     # Filter the annotations for the genes of interest
-    python filter_for_gene.py --gff "$(ls "${output_dir}/${i}/"*.aliasMatch.*)" --genes "${genes}" --output "${output_dir}/${i}/filtered.gff"
+    singularity exec ~/singularities/python.sif python filter_for_gene.py --gff "$(ls "${output_dir}/${i}/"*.aliasMatch.*)" --genes "${genes}" --output "${output_dir}/${i}/filtered.gff"
     # Create the transcripts file with gffread
     if [ -s "${output_dir}/${i}/filtered.gff" ]; then
         genome=$(echo ${output_dir}/${i}/*.f*)
         echo "${genome}"
         gunzip -c "$genome" > "${output_dir}/${i}/genome.fa"
-        gffread -w "${output_dir}/${i}/transcripts.fa" -g "${output_dir}/${i}/genome.fa" "${output_dir}/${i}/filtered.gff"
+        singularity exec ~/singularities/gffread.sif gffread -w "${output_dir}/${i}/transcripts.fa" -g "${output_dir}/${i}/genome.fa" "${output_dir}/${i}/filtered.gff"
     fi
     # Remove the OG annotations and genome file
     find "${output_dir}/${i}" -type f \
