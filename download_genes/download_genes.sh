@@ -22,7 +22,7 @@ has_gff() {
 }
 
 # Create the descendants list to iterate through
-annocli download --ref_only --taxids "${taxid}" --mode links | cut -d ' ' -f3 | cut -d '/' -f2,3 > "${output_dir}/descendants_list.txt"
+annocli download --ref-only --taxids "${taxid}" --mode links | cut -d ' ' -f3 | cut -d '/' -f2,3 > "${output_dir}/descendants_list.txt"
 dirs=$(cat "${output_dir}/descendants_list.txt")
 
 for i in ${dirs}; do
@@ -30,7 +30,7 @@ for i in ${dirs}; do
     taxon=$(echo "${i}" | cut -d '/' -f1 | awk -F'_' '{print $NF}')
     # Download the annotations for the taxid 
     if ! has_fasta "${output_dir}/${i}" || ! has_gff "${output_dir}/${i}"; then
-        annocli download --ref_only --taxids "${taxon}" --add_asm --fix_alias --output "${output_dir}"
+        annocli download --ref-only --taxids "${taxon}" --add_asm --fix_alias --output "${output_dir}"
     fi
     rm -f "${output_dir}/${i}/"*.aliasMappings.tsv 2>/dev/null || true
     # Filter the annotations for the genes of interest
