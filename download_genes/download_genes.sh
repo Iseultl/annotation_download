@@ -22,7 +22,7 @@ has_gff() {
 }
 
 # Create the descendants list to iterate through
-annocli download --ref_only "${taxid}" --mode links | cut -d ' ' -f3 | cut -d '/' -f2,3 > "${output_dir}/descendants_list.txt"
+annocli download --ref_only --taxids "${taxid}" --mode links | cut -d ' ' -f3 | cut -d '/' -f2,3 > "${output_dir}/descendants_list.txt"
 dirs=$(cat "${output_dir}/descendants_list.txt")
 
 for i in ${dirs}; do
