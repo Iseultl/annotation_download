@@ -10,7 +10,7 @@
 # Input files
 TAXID_FILE="taxids.txt"
 GENES_FILE="genes.txt"
-OUTDIR="/no_backup/rg/ileahy/mammals/readthrough_candidates"
+OUTDIR="/no_backup/rg/ileahy/mammals/Urlich_genes"
 
 # Get the taxid corresponding to this array task
 TAXID=$(sed -n "${SLURM_ARRAY_TASK_ID}p" "$TAXID_FILE")
