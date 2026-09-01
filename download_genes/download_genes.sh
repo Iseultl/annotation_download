@@ -40,7 +40,7 @@ for i in ${dirs}; do
         genome=$(echo ${output_dir}/${i}/*.f*)
         echo "${genome}"
         gunzip -c "$genome" > "${output_dir}/${i}/genome.fa"
-        singularity exec ~/singularities/gffread.sif gffread -w "${output_dir}/${i}/transcripts.fa" -g "${output_dir}/${i}/genome.fa" "${output_dir}/${i}/filtered.gff" --w-add 600
+        singularity exec ~/singularities/gffread.sif gffread -w "${output_dir}/${i}/transcripts.fa" -g "${output_dir}/${i}/genome.fa" "${output_dir}/${i}/filtered.gff" --w-add 2000
     fi
     # Remove the OG annotations and genome file
     find "${output_dir}/${i}" -type f \
