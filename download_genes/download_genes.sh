@@ -20,8 +20,8 @@ IFS=$'\t' read -r \
     taxid \
     organism_name \
     annotation_id \
-    assembly_accession \
     annotation_url \
+    assembly_accession \
     assembly_url \
     busco_complete \
     busco_duplicated \
