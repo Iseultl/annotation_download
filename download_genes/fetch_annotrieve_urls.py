@@ -392,21 +392,6 @@ def main():
             lineterminator="\n"
         )
 
-        # Write header
-        writer.writerow([
-            "taxid",
-            "organism_name",
-            "annotation_id",
-            "annotation_url",
-            "assembly_accession",
-            "assembly_url",
-            "busco_complete",
-            "busco_duplicated",
-            "busco_single_copy",
-            "busco_fragmented",
-            "busco_missing"
-        ])
-
         # Sort taxids numerically where possible
         for taxid in sorted(
             best_annotations,

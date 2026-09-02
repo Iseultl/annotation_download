@@ -56,18 +56,28 @@ mkdir -p "${species_dir}"
 )
 
 echo "species_dir=${species_dir}"
-ls -lah "${species_dir}"
 
 #Annocli alias match
 annocli alias "${species_dir}/annotation.gff.gz" "${species_dir}/annotation.fasta.gz" --output "${species_dir}/annotation.aliasMatch.gff.gz"
 gunzip -c "${species_dir}/annotation.aliasMatch.gff.gz" > "${species_dir}/annotation.aliasMatch.gff"
 
 # Filter annotation
-singularity exec $HOME/singularities/python.sif \
-    python $HOME/git/gitlab/annotation_download/download_genes/filter_for_gene.py \
+singularity exec "$HOME/singularities/python.sif" \
+    python "$HOME/git/gitlab/annotation_download/download_genes/filter_for_gene.py" \
     --gff "${species_dir}/annotation.aliasMatch.gff" \
     --genes "${genes}" \
     --output "${species_dir}/filtered.gff"
+
+filter_status=$?
+
+if [[ $filter_status -ne 0 ]]; then
+    echo "ERROR: filter_for_gene.py failed with exit code ${filter_status}"
+    echo "Removing ${species_dir}"
+
+    rm -rf "${species_dir}"
+
+    exit "$filter_status"
+fi
 
 # Create transcripts
 if [[ -s "${species_dir}/filtered.gff" ]]; then
