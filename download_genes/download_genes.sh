@@ -37,7 +37,7 @@ echo "Assembly: ${assembly_accession}"
 echo "========================================"
 
 # Replace spaces with underscores
-species_name="${species// /_}"
+species_name="${organism_name// /_}"
 
 species_dir="${output_dir}/${species_name}_${taxid}"
 
