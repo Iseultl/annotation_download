@@ -1,50 +1,90 @@
 #!/bin/bash
 set -euo pipefail
-taxid=$1
+
+url_file=$1
 genes=$2
 output_dir=$3
+task_id=$4
 
-# Create the output directory
-mkdir -p "${output_dir}"
+# Get the line corresponding to this SLURM array task
+line=$(sed -n "${task_id}p" "${url_file}")
 
-#Functions to check if assemblies are present in directory 
-has_fasta() {
-    local dir=$1
-    compgen -G "${dir}/*.fa*" > /dev/null || \
-    compgen -G "${dir}/*.fna*" > /dev/null || \
-    compgen -G "${dir}/*.fasta*" > /dev/null
-}
+# Exit if the line does not exist
+if [[ -z "${line}" ]]; then
+    echo "No input found for array task ${task_id}"
+    exit 0
+fi
 
-has_gff() {
-    local dir=$1
-    compgen -G "${dir}/*.gff*" > /dev/null || \
-    compgen -G "${dir}/*.gtf*" > /dev/null
-}
+# Read the columns from this line
+IFS=$'\t' read -r \
+    taxid \
+    organism_name \
+    annotation_id \
+    assembly_accession \
+    annotation_url \
+    assembly_url \
+    busco_complete \
+    busco_duplicated \
+    busco_single_copy \
+    busco_fragmented \
+    busco_missing <<< "${line}"
 
-# Create the descendants list to iterate through
-annocli download --ref-only --taxids "${taxid}" --mode links | cut -d ' ' -f3 | cut -d '/' -f2,3 > "${output_dir}/descendants_list.txt"
-dirs=$(cat "${output_dir}/descendants_list.txt")
+echo "========================================"
+echo "SLURM task: ${task_id}"
+echo "Processing: ${organism_name}"
+echo "TaxID: ${taxid}"
+echo "Assembly: ${assembly_accession}"
+echo "========================================"
 
-for i in ${dirs}; do
-    echo "${i}"
-    taxon=$(echo "${i}" | cut -d '/' -f1 | awk -F'_' '{print $NF}')
-    # Download the annotations for the taxid 
-    if ! has_fasta "${output_dir}/${i}" || ! has_gff "${output_dir}/${i}"; then
-        annocli download --ref-only --taxids "${taxon}" --add-asm --fix-alias --output "${output_dir}"
-    fi
-    rm -f "${output_dir}/${i}/"*.aliasMappings.tsv 2>/dev/null || true
-    # Filter the annotations for the genes of interest
-    singularity exec ~/singularities/python.sif python filter_for_gene.py --gff "$(ls "${output_dir}/${i}/"*.aliasMatch.*)" --genes "${genes}" --output "${output_dir}/${i}/filtered.gff"
-    # Create the transcripts file with gffread
-    if [ -s "${output_dir}/${i}/filtered.gff" ]; then
-        genome=$(echo ${output_dir}/${i}/*.f*)
-        echo "${genome}"
-        gunzip -c "$genome" > "${output_dir}/${i}/genome.fa"
-        singularity exec ~/singularities/gffread.sif gffread -w "${output_dir}/${i}/transcripts.fa" -g "${output_dir}/${i}/genome.fa" "${output_dir}/${i}/filtered.gff" --w-add 2000
-    fi
-    # Remove the OG annotations and genome file
-    find "${output_dir}/${i}" -type f \
-        ! -name "filtered.gff" \
-        ! -name "transcripts.fa" \
-        -delete
-done
+# Replace spaces with underscores
+species_name="${species// /_}"
+
+species_dir="${output_dir}/${species_name}_${taxid}"
+
+mkdir -p "${species_dir}"
+
+# Download files
+(
+    cd "${species_dir}" || exit 1
+
+    singularity exec $HOME/singularities/python.sif \
+        python $HOME/git/gitlab/annotation_download/download_genes/download_file.py \
+        --taxid "${taxid}" \
+        --annotation-url "${annotation_url}" \
+        --fasta-url "${fasta_url}" \
+        --retry-log "download_retry.tsv"
+)
+
+echo "species_dir=${species_dir}"
+ls -lah "${species_dir}"
+
+#Annocli alias match
+annocli alias "${species_dir}/annotation.gff.gz" "${species_dir}/annotation.fasta.gz" --output "${species_dir}/annotation.aliasMatch.gff.gz"
+gunzip -c "${species_dir}/annotation.aliasMatch.gff.gz" > "${species_dir}/annotation.aliasMatch.gff"
+
+# Filter annotation
+singularity exec $HOME/singularities/python.sif \
+    python $HOME/git/gitlab/annotation_download/download_genes/filter_for_gene.py \
+    --gff "${species_dir}/annotation.aliasMatch.gff" \
+    --genes "${genes}" \
+    --output "${species_dir}/filtered.gff"
+
+# Create transcripts
+if [[ -s "${species_dir}/filtered.gff" ]]; then
+
+    gunzip -c "${species_dir}/annotation.fasta.gz" \
+        > "${species_dir}/genome.fa"
+
+    singularity exec $HOME/singularities/gffread.sif \
+        gffread \
+        -w "${species_dir}/transcripts.fa" \
+        -g "${species_dir}/genome.fa" \
+        "${species_dir}/filtered.gff" \
+        --w-add 2000
+fi
+
+# Remove temporary/downloaded files
+find "${species_dir}" -type f \
+    ! -name "filtered.gff" \
+    ! -name "transcripts.fa" \
+    -delete
