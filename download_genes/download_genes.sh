@@ -51,7 +51,7 @@ mkdir -p "${species_dir}"
         python $HOME/git/gitlab/annotation_download/download_genes/download_file.py \
         --taxid "${taxid}" \
         --annotation-url "${annotation_url}" \
-        --fasta-url "${fasta_url}" \
+        --fasta-url "${assembly_url}" \
         --retry-log "download_retry.tsv"
 )
 
