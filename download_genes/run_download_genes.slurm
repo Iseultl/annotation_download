@@ -3,7 +3,7 @@
 #SBATCH --output=/no_backup/rg/ileahy/logs/download_%A_%a.out
 #SBATCH --error=/no_backup/rg/ileahy/logs/download_%A_%a.err
 #SBATCH --array=0-776
-#SBATCH --time=04:00:00
+#SBATCH --time=00:30:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
 

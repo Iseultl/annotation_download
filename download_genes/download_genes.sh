@@ -71,12 +71,9 @@ singularity exec "$HOME/singularities/python.sif" \
 filter_status=$?
 
 if [[ $filter_status -ne 0 ]]; then
-    echo "ERROR: filter_for_gene.py failed with exit code ${filter_status}"
-    echo "Removing ${species_dir}"
-
+    echo "No matching genes found for ${species_dir}"
     rm -rf "${species_dir}"
-
-    exit "$filter_status"
+    continue
 fi
 
 # Create transcripts
