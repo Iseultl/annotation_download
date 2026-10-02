@@ -169,10 +169,13 @@ def fetch_best_annotations(selected_taxids):
             # Skip taxids we are not interested in
             if taxid not in selected_taxids:
                 continue
+            
+            if is_toga_annotation(annotation):
+                # Skip TOGA annotations
+                continue
 
             # Compare against the current best annotation
             if taxid not in best_annotations:
-
                 best_annotations[taxid] = annotation
 
             else:
@@ -299,6 +302,16 @@ def fetch_required_assemblies(required_accessions):
 
     return assemblies_dict
 
+def is_toga_annotation(annotation):
+    """Return True if the annotation URL contains TOGA."""
+    annotation_url = (
+        annotation
+        .get("source_file_info", {})
+        .get("url_path", "")
+    )
+
+    return "TOGA" in annotation_url.upper()
+
 
 def main():
 
@@ -327,7 +340,7 @@ def main():
             selected_taxids
         )
     )
-
+    print(best_annotations)
     if not best_annotations:
 
         logger.error(
