@@ -4,6 +4,7 @@ import sys
 import gzip
 from pathlib import Path
 import argparse
+import re
 
 # --------------------------------------------------
 # Utilities
@@ -15,10 +16,22 @@ def open_gff(path):
 def parse_attributes(attr_str):
     """Convert GFF3 attribute column into dict"""
     attrs = {}
-    for item in attr_str.strip().split(";"):
-        if "=" in item:
-            k, v = item.split("=", 1)
-            attrs[k.lower()] = v
+    for item in attr_str.strip().strip(";").split(";"): 
+        item = item.strip() 
+        if not item: 
+            continue 
+        # GFF3: key=value 
+        if "=" in item: 
+            key, value = item.split("=", 1) 
+        # GTF: key "value" or key value 
+        else: 
+            match = re.match(r'^\s*(\S+)\s+(.*)\s*$', item) 
+            if not match: 
+                continue 
+            key, value = match.groups() 
+        # Remove surrounding quotes from GTF values 
+        value = value.strip().strip('"') 
+        attrs[key.lower()] = value
     return attrs
 
 
@@ -56,7 +69,7 @@ def filter_gff(gff_path, genes):
         attrs = parse_attributes(cols[8])
 
         if feature == "gene":
-            gene_name = attrs.get("gene") or attrs.get("name")
+            gene_name = attrs.get("gene") or attrs.get("name") or attrs.get("gene_name")
             if gene_name in genes:   # exact match
                 if "id" in attrs:
                     gene_ids.add(attrs["id"])
@@ -119,7 +132,6 @@ def main():
     args = parser.parse_args()
 
     genes = load_genes(args.genes)
-
     gff_path = Path(args.gff)
 
     if not gff_path.exists():
