@@ -83,75 +83,273 @@ def load_genes(arg):
 # --------------------------------------------------
 # Core filtering logic
 # --------------------------------------------------
+def _as_list(value):
+    """Return an attribute value as a list."""
+    if value is None:
+        return []
+
+    if isinstance(value, list):
+        return value
+
+    return [value]
+
+
 def filter_gff(gff_path, genes):
 
+    # --------------------------------------------------
+    # Read file
+    # --------------------------------------------------
+
     orig_lines = []
-    lower_lines = []
+    parsed_records = []
+
     with open_gff(gff_path) as f:
         for line in f:
-            if not line.startswith("#"):
-                stripped = line.rstrip("\n")
-                orig_lines.append(stripped)
-                lower_lines.append(stripped.lower())
 
-    # pass 1 - find matching gene IDs
-    gene_ids = set()
+            if line.startswith("#"):
+                continue
 
-    for line in lower_lines:
-        cols = line.split("\t")
-        if len(cols) < 9:
-            continue
+            stripped = line.rstrip("\n")
 
-        feature = cols[2]
-        attrs = parse_attributes(cols[8])
+            cols = stripped.split("\t")
 
-        if feature == "gene":
-            gene_name = attrs.get("gene") or attrs.get("name") or attrs.get("gene_name")
-            if gene_name in genes:   # exact match
-                if "id" in attrs:
-                    gene_ids.add(attrs["id"])
-
-    if not gene_ids:
-        return False, []
-
-    # pass 2 - collect all descendants
-    keep_ids = set(gene_ids)
-    changed = True
-
-    while changed:
-        changed = False
-        for line in lower_lines:
-            cols = line.split("\t")
             if len(cols) < 9:
                 continue
 
+            feature = cols[2].lower()
             attrs = parse_attributes(cols[8])
-            parents = attrs.get("parent", "").split(",")
 
-            if any(p in keep_ids for p in parents):
-                if "id" in attrs and attrs["id"] not in keep_ids:
-                    keep_ids.add(attrs["id"])
-                    changed = True
+            orig_lines.append(stripped)
 
-    # pass 3 - output original-case lines
-    out_lines = []
+            parsed_records.append({
+                "line": stripped,
+                "feature": feature,
+                "attrs": attrs,
+            })
 
-    for orig, lower in zip(orig_lines, lower_lines):
-        cols = lower.split("\t")
-        if len(cols) < 9:
+    target_gene_ids = set()
+    target_gene_names = set()
+
+    for record in parsed_records:
+
+        if record["feature"] != "gene":
             continue
 
-        attrs = parse_attributes(cols[8])
-        parents = attrs.get("parent", "").split(",")
+        attrs = record["attrs"]
 
-        if (
-            attrs.get("id") in keep_ids
-            or any(p in keep_ids for p in parents)
+        # Possible names for the biological gene name
+        candidate_names = []
+
+        for key in (
+            "gene_name",
+            "gene",
+            "name",
+            "gene_symbol",
         ):
-            out_lines.append(orig)
+            candidate_names.extend(_as_list(attrs.get(key)))
+
+        # Possible gene identifiers
+        candidate_ids = []
+
+        for key in (
+            "gene_id",
+            "id",
+        ):
+            candidate_ids.extend(_as_list(attrs.get(key)))
+
+        # Normalise
+        candidate_names = {
+            str(x).strip().lower()
+            for x in candidate_names
+            if x is not None
+        }
+
+        candidate_ids = {
+            str(x).strip().lower()
+            for x in candidate_ids
+            if x is not None
+        }
+
+        # Check either gene name or gene ID
+        matched = (
+            bool(candidate_names & genes)
+            or bool(candidate_ids & genes)
+        )
+
+        if matched:
+
+            target_gene_names.update(candidate_names)
+            target_gene_ids.update(candidate_ids)
+
+    # --------------------------------------------------
+    # If no genes were found, provide useful diagnostics
+    # --------------------------------------------------
+
+    if not target_gene_ids and not target_gene_names:
+
+        print("No matching genes found.")
+
+        # Print a few example gene annotations so that
+        # we can see what the file actually contains.
+        print("\nExample gene annotations from the input:")
+
+        shown = 0
+
+        for record in parsed_records:
+
+            if record["feature"] != "gene":
+                continue
+
+            attrs = record["attrs"]
+
+            print(
+                "  gene_id=",
+                attrs.get("gene_id"),
+                "gene_name=",
+                attrs.get("gene_name"),
+                "id=",
+                attrs.get("id"),
+                "name=",
+                attrs.get("name"),
+            )
+
+            shown += 1
+
+            if shown >= 5:
+                break
+
+        return False, []
+
+    print("Matched gene IDs:", sorted(target_gene_ids))
+    print("Matched gene names:", sorted(target_gene_names))
+
+    keep_ids = set(target_gene_ids)
+
+    keep_transcript_ids = set()
+
+    changed = True
+
+    while changed:
+
+        changed = False
+
+        for record in parsed_records:
+
+            attrs = record["attrs"]
+
+            # ------------------------------------------
+            # GTF
+            # ------------------------------------------
+
+            gene_ids = {
+                str(x).strip().lower()
+                for x in _as_list(attrs.get("gene_id"))
+                if x is not None
+            }
+
+            transcript_ids = {
+                str(x).strip().lower()
+                for x in _as_list(attrs.get("transcript_id"))
+                if x is not None
+            }
+
+            # If this annotation belongs directly to one
+            # of our target genes, retain its transcript ID.
+            if gene_ids & target_gene_ids:
+
+                for tx_id in transcript_ids:
+                    if tx_id not in keep_transcript_ids:
+                        keep_transcript_ids.add(tx_id)
+                        changed = True
+
+            # ------------------------------------------
+            # GFF3
+            # ------------------------------------------
+
+            parents = {
+                str(x).strip().lower()
+                for x in _as_list(attrs.get("parent"))
+                if x is not None
+            }
+
+            ids = {
+                str(x).strip().lower()
+                for x in _as_list(attrs.get("id"))
+                if x is not None
+            }
+
+            # A record whose parent is already retained
+            # should also be retained.
+            if parents & keep_ids:
+
+                for obj_id in ids:
+
+                    if obj_id not in keep_ids:
+                        keep_ids.add(obj_id)
+                        changed = True
+
+                    # If this is a transcript, retain it
+                    # explicitly as well.
+                    if record["feature"] in (
+                        "transcript",
+                        "mrna",
+                        "rna",
+                    ):
+                        keep_transcript_ids.add(obj_id)
+
+
+    out_lines = []
+
+    for record in parsed_records:
+
+        attrs = record["attrs"]
+
+        # ----------------------------------------------
+        # GTF relationship
+        # ----------------------------------------------
+
+        gene_ids = {
+            str(x).strip().lower()
+            for x in _as_list(attrs.get("gene_id"))
+            if x is not None
+        }
+
+        transcript_ids = {
+            str(x).strip().lower()
+            for x in _as_list(attrs.get("transcript_id"))
+            if x is not None
+        }
+
+        gtf_match = (
+            bool(gene_ids & target_gene_ids)
+            or bool(transcript_ids & keep_transcript_ids)
+        )
+
+        # ----------------------------------------------
+        # GFF3 relationship
+        # ----------------------------------------------
+
+        ids = {
+            str(x).strip().lower()
+            for x in _as_list(attrs.get("id"))
+            if x is not None
+        }
+
+        parents = {
+            str(x).strip().lower()
+            for x in _as_list(attrs.get("parent"))
+            if x is not None
+        }
+
+        gff_match = (
+            bool(ids & keep_ids)
+            or bool(parents & keep_ids)
+        )
+
+        if gtf_match or gff_match:
+            out_lines.append(record["line"])
 
     return True, out_lines
-
 
 # --------------------------------------------------
 # Main
