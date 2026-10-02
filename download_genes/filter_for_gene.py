@@ -5,6 +5,7 @@ import gzip
 from pathlib import Path
 import argparse
 import re
+from urllib.parse import unquote
 
 # --------------------------------------------------
 # Utilities
@@ -12,28 +13,64 @@ import re
 def open_gff(path):
     return gzip.open(path, "rt") if str(path).endswith(".gz") else open(path)
 
-
 def parse_attributes(attr_str):
-    """Convert GFF3 attribute column into dict"""
-    attrs = {}
-    for item in attr_str.strip().strip(";").split(";"): 
-        item = item.strip() 
-        if not item: 
-            continue 
-        # GFF3: key=value 
-        if "=" in item: 
-            key, value = item.split("=", 1) 
-        # GTF: key "value" or key value 
-        else: 
-            match = re.match(r'^\s*(\S+)\s+(.*)\s*$', item) 
-            if not match: 
-                continue 
-            key, value = match.groups() 
-        # Remove surrounding quotes from GTF values 
-        value = value.strip().strip('"') 
-        attrs[key.lower()] = value
-    return attrs
+    if attr_str is None:
+        return {}
 
+    if not isinstance(attr_str, str):
+        return {}
+
+    attr_str = attr_str.strip()
+
+    if not attr_str or attr_str == ".":
+        return {}
+
+    attrs = {}
+    items = re.split(r';(?=(?:[^"]*"[^"]*")*[^"]*$)', attr_str)
+
+    for item in items:
+        item = item.strip()
+
+        if not item:
+            continue
+
+        if "=" in item:
+            key, value = item.split("=", 1)
+            key = key.strip().lower()
+            value = value.strip()
+
+            # URL-decode GFF3 values
+            value = unquote(value)
+
+            # Remove surrounding quotes if present
+            if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+                value = value[1:-1]
+        else:
+            match = re.match(
+                r'^\s*([^\s]+)\s+(.*?)\s*$',
+                item
+            )
+
+            if not match:
+                key = item.strip().lower()
+                value = True
+            else:
+                key, value = match.groups()
+                key = key.strip().lower()
+                value = value.strip()
+
+                # Remove surrounding quotes
+                if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+                    value = value[1:-1]
+                value = unquote(value)
+        if key in attrs:
+            if isinstance(attrs[key], list):
+                attrs[key].append(value)
+            else:
+                attrs[key] = [attrs[key], value]
+        else:
+            attrs[key] = value
+    return attrs
 
 def load_genes(arg):
     """Accept comma list OR file"""
